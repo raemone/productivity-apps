@@ -1,0 +1,54 @@
+name: Lint PowerShell
+
+on:
+  push:
+    paths:
+      - '**/*.ps1'
+      - '**/*.psm1'
+      - '**/*.psd1'
+      - '.github/workflows/lint-powershell.yml'
+  pull_request:
+    paths:
+      - '**/*.ps1'
+      - '**/*.psm1'
+      - '**/*.psd1'
+      - '.github/workflows/lint-powershell.yml'
+  workflow_dispatch:
+
+jobs:
+  analyze:
+    # Windows Forms and the ScheduledTasks module only exist on Windows.
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PSScriptAnalyzer
+        shell: powershell
+        run: Install-Module PSScriptAnalyzer -Force -Scope CurrentUser -SkipPublisherCheck
+
+      - name: Check every script parses
+        shell: powershell
+        run: |
+          $failed = $false
+          Get-ChildItem -Recurse -Include *.ps1, *.psm1, *.psd1 | ForEach-Object {
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$null, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $failed = $true
+              foreach ($e in $errors) {
+                Write-Output "::error file=$($_.FullName),line=$($e.Extent.StartLineNumber)::$($e.Message)"
+              }
+            }
+          }
+          if ($failed) { exit 1 }
+
+      - name: Run PSScriptAnalyzer
+        shell: powershell
+        run: |
+          $results = Invoke-ScriptAnalyzer -Path . -Recurse -Severity Error, Warning
+          foreach ($r in $results) {
+            $level = if ($r.Severity -eq 'Error') { 'error' } else { 'warning' }
+            Write-Output "::$level file=$($r.ScriptPath),line=$($r.Line)::$($r.RuleName): $($r.Message)"
+          }
+          if ($results | Where-Object Severity -eq 'Error') { exit 1 }

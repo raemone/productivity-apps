@@ -84,6 +84,9 @@ function New-LidIcon {
     .SYNOPSIS
         Draws a laptop glyph in the given colour and returns it as an icon.
     #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'Draws an in-memory icon; changes no system state.')]
     param(
         [Parameter(Mandatory)][System.Drawing.Color]$Color,
         [Parameter(Mandatory)][bool]$LidOpen
@@ -171,6 +174,9 @@ $menu = New-Object System.Windows.Forms.ContextMenuStrip
 $script:Notify.ContextMenuStrip = $menu
 
 function New-MenuItem {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'Constructs a menu item; changes no system state.')]
     param([string]$Text, [scriptblock]$OnClick, [switch]$Disabled)
 
     $item = New-Object System.Windows.Forms.ToolStripMenuItem
@@ -222,6 +228,9 @@ function Update-Tray {
     .SYNOPSIS
         Re-reads the lid setting and repaints icon, tooltip and menu checks.
     #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'Repaints the tray icon only; changes no system state.')]
     [CmdletBinding()] param()
 
     $state = Get-LidPowerState
@@ -265,6 +274,9 @@ function Set-Mode {
     .SYNOPSIS
         Applies a lid close action and reports the result in a balloon tip.
     #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'Called from a tray click, where -WhatIf has no meaning; the underlying Set-LidPowerState supports ShouldProcess.')]
     param([int]$Ac, [int]$Dc)
 
     try {
@@ -307,6 +319,9 @@ function Switch-Startup {
 }
 
 function Stop-App {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'Exits the tray app on an explicit menu click.')]
     [CmdletBinding()] param()
 
     $script:Timer.Stop()
@@ -315,10 +330,10 @@ function Stop-App {
     $script:Context.ExitThread()
 }
 
-# An explicit param block is the reliable way to reach the event args here.
 $script:Notify.add_MouseUp({
-    param($eventSender, $eventArgs)
-    if ($eventArgs.Button -eq [System.Windows.Forms.MouseButtons]::Left) { Switch-Mode }
+    # A delegate scriptblock receives (sender, MouseEventArgs) in $args. Naming
+    # them as parameters would shadow PowerShell's own $eventArgs.
+    if ($args[1].Button -eq [System.Windows.Forms.MouseButtons]::Left) { Switch-Mode }
 })
 
 # The lid action can also change from power options or a plan switch, so poll.

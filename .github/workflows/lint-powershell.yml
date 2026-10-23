@@ -1,7 +1,9 @@
 name: Lint PowerShell
 
 on:
+  # Only main, so a branch push does not duplicate the pull_request run.
   push:
+    branches: [main]
     paths:
       - '**/*.ps1'
       - '**/*.psm1'
@@ -21,7 +23,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install PSScriptAnalyzer
         shell: powershell
